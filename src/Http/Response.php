@@ -70,6 +70,13 @@ class Response extends IlluminateResponse
     protected static $events;
 
     /**
+     * Container instance for resolving dependencies at runtime.
+     *
+     * @var \Illuminate\Container\Container|null
+     */
+    protected static $container;
+
+    /**
      * Create a new response instance.
      *
      * @param mixed                               $content
@@ -136,8 +143,9 @@ class Response extends IlluminateResponse
 
         $this->fireMorphingEvent();
 
-        if (isset(static::$transformer) && static::$transformer->transformableResponse($this->workingContent)) {
-            $this->workingContent = static::$transformer->transform($this->workingContent);
+        $transformer = static::getTransformer();
+        if ($transformer && $transformer->transformableResponse($this->workingContent)) {
+            $this->workingContent = $transformer->transform($this->workingContent);
         }
 
         $formatter = static::getFormatter($format);
@@ -180,11 +188,12 @@ class Response extends IlluminateResponse
      */
     protected function fireMorphedEvent()
     {
-        if (! static::$events) {
+        $events = static::getEventDispatcher();
+        if (! $events) {
             return;
         }
 
-        static::$events->dispatch(new ResponseWasMorphed($this, $this->workingContent));
+        $events->dispatch(new ResponseWasMorphed($this, $this->workingContent));
     }
 
     /**
@@ -194,11 +203,12 @@ class Response extends IlluminateResponse
      */
     protected function fireMorphingEvent()
     {
-        if (! static::$events) {
+        $events = static::getEventDispatcher();
+        if (! $events) {
             return;
         }
 
-        static::$events->dispatch(new ResponseIsMorphing($this, $this->workingContent));
+        $events->dispatch(new ResponseIsMorphing($this, $this->workingContent));
     }
 
     /**
@@ -234,6 +244,36 @@ class Response extends IlluminateResponse
     public static function setEventDispatcher(EventDispatcher $events)
     {
         static::$events = $events;
+    }
+
+    /**
+     * Get the event dispatcher instance.
+     *
+     * @return \Illuminate\Contracts\Events\Dispatcher|null
+     */
+    public static function getEventDispatcher()
+    {
+        if (static::$events) {
+            return static::$events;
+        }
+
+        // Try to resolve from container if available
+        if (static::$container && static::$container->bound('events')) {
+            return static::$container->make('events');
+        }
+
+        return null;
+    }
+
+    /**
+     * Set the container instance for runtime resolution.
+     *
+     * @param \Illuminate\Container\Container $container
+     * @return void
+     */
+    public static function setContainer($container)
+    {
+        static::$container = $container;
     }
 
     /**
@@ -338,11 +378,20 @@ class Response extends IlluminateResponse
     /**
      * Get the transformer instance.
      *
-     * @return \Dingo\Api\Transformer\Factory
+     * @return \Dingo\Api\Transformer\Factory|null
      */
     public static function getTransformer()
     {
-        return static::$transformer;
+        if (static::$transformer) {
+            return static::$transformer;
+        }
+
+        // Try to resolve from container if available
+        if (static::$container && static::$container->bound('api.transformer')) {
+            return static::$container->make('api.transformer');
+        }
+
+        return null;
     }
 
     /**

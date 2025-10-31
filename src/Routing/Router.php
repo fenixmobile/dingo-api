@@ -504,7 +504,12 @@ class Router
             $response = $this->exception->handle($exception);
         }
 
-        return $this->prepareResponse($response, $request, $request->format());
+        $response = $this->prepareResponse($response, $request, $request->format());
+
+        // Clear current route state to prevent leaks in long-running processes
+        $this->currentRoute = null;
+
+        return $response;
     }
 
     /**

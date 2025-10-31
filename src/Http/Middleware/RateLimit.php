@@ -68,8 +68,11 @@ class RateLimit
         $response = $next($request);
 
         if ($this->handler->requestWasRateLimited()) {
-            return $this->responseWithHeaders($response);
+            $response = $this->responseWithHeaders($response);
         }
+
+        // Clear request-specific state to prevent leaks in long-running processes
+        $this->handler->clearRequestState();
 
         return $response;
     }

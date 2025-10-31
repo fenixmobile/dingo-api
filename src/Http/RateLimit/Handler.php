@@ -322,4 +322,18 @@ class Handler
 
         $this->throttles->push($throttle);
     }
+
+    /**
+     * Clear request-specific state. This should be called after each request
+     * to prevent state leaks in long-running processes (e.g., Swoole/Octane).
+     *
+     * @return void
+     */
+    public function clearRequestState()
+    {
+        $this->request = null;
+        $this->throttle = null;
+        $this->keyPrefix = null;
+        $this->limiter = null;
+    }
 }

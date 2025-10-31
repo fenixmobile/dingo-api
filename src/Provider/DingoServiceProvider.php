@@ -25,6 +25,8 @@ class DingoServiceProvider extends ServiceProvider
         $this->setResponseStaticInstances();
 
         Request::setAcceptParser($this->app[\Dingo\Api\Http\Parser\Accept::class]);
+        Request::setContainer($this->app);
+        Response::setContainer($this->app);
 
         $this->app->rebinding('api.routes', function ($app, $routes) {
             $app['api.url']->setRouteCollections($routes);

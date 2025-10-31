@@ -48,7 +48,9 @@ class HttpServiceProvider extends ServiceProvider
      */
     protected function registerRateLimiting()
     {
-        $this->app->singleton('api.limiting', function ($app) {
+        // Use bind instead of singleton to prevent state leaks in long-running processes
+        // The Handler stores request-specific state (request, throttle, keyPrefix, limiter)
+        $this->app->bind('api.limiting', function ($app) {
             return new RateLimitHandler($app, $app['cache'], $this->config('throttling'));
         });
     }

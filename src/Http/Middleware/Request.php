@@ -90,9 +90,11 @@ class Request
     {
         try {
             if ($this->validator->validateRequest($request)) {
-                $this->app->singleton(LaravelExceptionHandler::class, function ($app) {
-                    return $app[ExceptionHandler::class];
-                });
+                // Use instance instead of singleton to prevent state leaks in long-running processes
+                // This binding is request-specific and should not persist across requests
+                if (!$this->app->bound(LaravelExceptionHandler::class)) {
+                    $this->app->instance(LaravelExceptionHandler::class, $this->app[ExceptionHandler::class]);
+                }
 
                 $request = $this->app->make(RequestContract::class)->createFromIlluminate($request);
 

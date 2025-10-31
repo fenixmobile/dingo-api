@@ -18,6 +18,13 @@ class Request extends IlluminateRequest implements RequestInterface
     protected static $acceptParser;
 
     /**
+     * Container instance for resolving dependencies at runtime.
+     *
+     * @var \Illuminate\Container\Container|null
+     */
+    protected static $container;
+
+    /**
      * Parsed accept header for the request.
      *
      * @var array
@@ -98,7 +105,10 @@ class Request extends IlluminateRequest implements RequestInterface
             return;
         }
 
-        $this->accept = static::$acceptParser->parse($this);
+        $parser = static::getAcceptParser();
+        if ($parser) {
+            $this->accept = $parser->parse($this);
+        }
     }
 
     /**
@@ -115,10 +125,30 @@ class Request extends IlluminateRequest implements RequestInterface
     /**
      * Get the accept parser instance.
      *
-     * @return \Dingo\Api\Http\Parser\Accept
+     * @return \Dingo\Api\Http\Parser\Accept|null
      */
     public static function getAcceptParser()
     {
-        return static::$acceptParser;
+        if (static::$acceptParser) {
+            return static::$acceptParser;
+        }
+
+        // Try to resolve from container if available
+        if (static::$container && static::$container->bound(\Dingo\Api\Http\Parser\Accept::class)) {
+            return static::$container->make(\Dingo\Api\Http\Parser\Accept::class);
+        }
+
+        return null;
+    }
+
+    /**
+     * Set the container instance for runtime resolution.
+     *
+     * @param \Illuminate\Container\Container $container
+     * @return void
+     */
+    public static function setContainer($container)
+    {
+        static::$container = $container;
     }
 }
