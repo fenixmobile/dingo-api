@@ -72,7 +72,7 @@ class LaravelServiceProvider extends DingoServiceProvider
      */
     protected function replaceRouteDispatcher()
     {
-        $this->app->singleton('illuminate.route.dispatcher', function ($app) {
+        $this->app->bind('illuminate.route.dispatcher', function ($app) {
             return new ControllerDispatcher($app['api.router.adapter']->getRouter(), $app);
         });
     }
@@ -122,7 +122,7 @@ class LaravelServiceProvider extends DingoServiceProvider
      */
     protected function registerRouterAdapter()
     {
-        $this->app->singleton('api.router.adapter', function ($app) {
+        $this->app->bind('api.router.adapter', function ($app) {
             return new LaravelAdapter($app['router']);
         });
     }

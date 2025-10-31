@@ -27,6 +27,6 @@ class BaseTestCase extends TestCase
 
     protected function setupTranslator(): void
     {
-        app()->singleton('translator', TranslatorStub::class);;
+        app()->bind('translator', TranslatorStub::class);;
     }
 }

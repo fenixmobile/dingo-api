@@ -77,7 +77,7 @@ class DispatcherTest extends BaseTestCase
         $this->dispatcher = new Dispatcher($this->container, new Filesystem, $this->router, $this->auth);
 
         app()->instance(\Illuminate\Routing\Router::class, $this->adapter);
-        $this->container->singleton(CallableDispatcherContract::class, CallableDispatcher::class);
+        $this->container->bind(CallableDispatcherContract::class, CallableDispatcher::class);
 
         $this->dispatcher->setSubtype('api');
         $this->dispatcher->setStandardsTree('vnd');
