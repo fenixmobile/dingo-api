@@ -283,8 +283,9 @@ class Route extends \Illuminate\Routing\Route
     {
         [$this->controllerClass, $this->controllerMethod] = explode('@', $this->action['uses']);
 
-        $this->container->instance($this->controllerClass,
-            $this->controller = $this->container->make($this->controllerClass));
+        // Don't bind as singleton to avoid state leaks in Swoole/Octane
+        // Each request should get a fresh controller instance
+        $this->controller = $this->container->make($this->controllerClass);
 
         return $this->controller;
     }

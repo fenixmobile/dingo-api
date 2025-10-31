@@ -343,6 +343,10 @@ class Router
 
         $action['uri'] = $uri;
 
+        if (! isset($action['version'])) {
+            throw new RuntimeException('A version is required for a route definition.');
+        }
+
         return $this->adapter->addRoute((array) $methods, $action['version'], $uri, $action);
     }
 
@@ -354,6 +358,10 @@ class Router
      */
     protected function addControllerMiddlewareToRouteAction(array $action)
     {
+        if (! isset($action['middleware'])) {
+            $action['middleware'] = [];
+        }
+
         array_unshift($action['middleware'], 'api.controllers');
 
         return $action;
@@ -409,7 +417,12 @@ class Router
             $new['as'] = trim($old['as'].'.'.Arr::get($new, 'as', ''), '.');
         }
 
-        return array_merge_recursive(Arr::except($old, ['namespace', 'prefix', 'where', 'as']), $new);
+        // Ensure version is properly merged from old group attributes
+        if (isset($old['version']) && ! isset($new['version'])) {
+            $new['version'] = $old['version'];
+        }
+
+        return array_merge_recursive(Arr::except($old, ['namespace', 'prefix', 'where', 'as', 'version']), $new);
     }
 
     /**
@@ -486,6 +499,7 @@ class Router
      */
     public function dispatch(Request $request)
     {
+        // Reset state at the beginning of each request to prevent state leaks
         $this->currentRoute = null;
 
         $this->container->instance(Request::class, $request);
@@ -502,6 +516,10 @@ class Router
             $this->exception->report($exception);
 
             $response = $this->exception->handle($exception);
+        } finally {
+            // Clean up state after request to prevent leaks in Swoole/Octane
+            // Note: currentRoute is kept until next request for getCurrentRoute() calls
+            // but will be reset at the start of the next dispatch()
         }
 
         return $this->prepareResponse($response, $request, $request->format());
