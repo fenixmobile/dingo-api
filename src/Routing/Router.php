@@ -317,6 +317,7 @@ class Router
      */
     public function addRoute($methods, $uri, $action)
     {
+        // Normalize action first
         if (is_string($action)) {
             $action = ['uses' => $action, 'controller' => $action];
         } elseif ($action instanceof Closure) {
@@ -329,7 +330,16 @@ class Router
             }
         }
 
+        // Merge group attributes BEFORE further processing
+        // This ensures version and other attributes from group stack are properly merged
         $action = $this->mergeLastGroupAttributes($action);
+        
+        // If action is still a Closure array (unlikely but possible), ensure it's a proper array
+        if (is_array($action) && count($action) === 1 && isset($action[0]) && $action[0] instanceof Closure) {
+            // Keep closure but ensure it's in proper format
+            $closure = $action[0];
+            $action = ['uses' => $closure];
+        }
 
         $action = $this->addControllerMiddlewareToRouteAction($action);
 
@@ -376,10 +386,21 @@ class Router
     protected function mergeLastGroupAttributes(array $attributes)
     {
         if (empty($this->groupStack)) {
-            return $this->mergeGroup($attributes, []);
+            $merged = $this->mergeGroup($attributes, []);
+        } else {
+            $merged = $this->mergeGroup($attributes, end($this->groupStack));
         }
 
-        return $this->mergeGroup($attributes, end($this->groupStack));
+        // Ensure version is always set if we have a group stack
+        // This is critical for resource routes that may not have version in their action
+        if (! isset($merged['version']) && ! empty($this->groupStack)) {
+            $lastGroup = end($this->groupStack);
+            if (isset($lastGroup['version'])) {
+                $merged['version'] = $lastGroup['version'];
+            }
+        }
+
+        return $merged;
     }
 
     /**
@@ -418,11 +439,25 @@ class Router
         }
 
         // Ensure version is properly merged from old group attributes
+        // Version should come from the group stack, not from the route action
         if (isset($old['version']) && ! isset($new['version'])) {
             $new['version'] = $old['version'];
+        } elseif (isset($old['version']) && isset($new['version'])) {
+            // If both have version, use the new one (route-specific override)
+            // but ensure it's an array
+            if (! is_array($new['version'])) {
+                $new['version'] = (array) $new['version'];
+            }
         }
 
-        return array_merge_recursive(Arr::except($old, ['namespace', 'prefix', 'where', 'as', 'version']), $new);
+        $merged = array_merge_recursive(Arr::except($old, ['namespace', 'prefix', 'where', 'as', 'version']), $new);
+        
+        // Ensure version is set after merge
+        if (! isset($merged['version']) && isset($old['version'])) {
+            $merged['version'] = $old['version'];
+        }
+
+        return $merged;
     }
 
     /**
